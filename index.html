@@ -2700,6 +2700,107 @@ function loadImgbbKey() {
   }
 }
 // Call loadImgbbKey() in DOMContentLoaded
+  // ========== ADD COPY THUMBNAIL BUTTON TO THUMB TAB ==========
+// Override renderGames to inject the button after each card is created
+if (typeof renderGames === 'function') {
+  const originalRenderGames = renderGames;
+  window.renderGames = function() {
+    // Call original
+    originalRenderGames();
+
+    // After cards are rendered, add copy button to each thumb panel
+    for (let i = 0; i < (detectedGames?.length || 0); i++) {
+      const thumbPanel = document.getElementById(`text-thumbnail-${i}`);
+      if (!thumbPanel) continue;
+
+      // Check if button already exists to avoid duplicates
+      if (thumbPanel.querySelector('.copy-thumb-btn')) continue;
+
+      const url = detectedGames[i]?.thumbUrl;
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-secondary btn-sm copy-thumb-btn';
+      btn.innerHTML = '<span class="btn-text">📋 Copy URL</span>';
+      btn.style.marginLeft = '8px';
+      btn.onclick = () => {
+        if (!url) {
+          toast('No thumbnail generated yet', 'err');
+          return;
+        }
+        navigator.clipboard.writeText(url).then(() => {
+          toast('Thumbnail URL copied to clipboard', 'ok');
+        }).catch(() => {
+          const textarea = document.createElement('textarea');
+          textarea.value = url;
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textarea);
+          toast('Thumbnail URL copied to clipboard', 'ok');
+        });
+      };
+
+      // Find the .thumb-actions div inside the panel and append the button
+      const actionsDiv = thumbPanel.querySelector('.thumb-actions');
+      if (actionsDiv) {
+        actionsDiv.appendChild(btn);
+      } else {
+        // If no actions div, create one and add buttons
+        const newActions = document.createElement('div');
+        newActions.className = 'thumb-actions';
+        newActions.innerHTML = `
+          <button class="btn btn-secondary" onclick="regenThumbnail(${i})"><span class="btn-text">🔄 Regen</span><div class="spin"></div></button>
+          <a class="btn btn-secondary" href="${url || '#'}" download="sports803-thumb-${i}.jpg" style="${!url ? 'display:none' : ''}"><span class="btn-text">⬇ Download</span></a>
+        `;
+        newActions.appendChild(btn);
+        // Also add download link if url exists
+        if (url) {
+          const downloadLink = newActions.querySelector('a');
+          if (downloadLink) downloadLink.href = url;
+        } else {
+          const downloadLink = newActions.querySelector('a');
+          if (downloadLink) downloadLink.style.display = 'none';
+        }
+        thumbPanel.querySelector('.thumb-panel')?.appendChild(newActions);
+      }
+    }
+  };
+}
+
+// ========== ENHANCED LOGO FETCHING FOR THUMBNAILS ==========
+// Ensure the existing generateEventThumbnail uses the best logos
+// This function should already be defined; we'll override it to be safe.
+if (typeof generateEventThumbnail === 'function') {
+  const originalGenThumb = generateEventThumbnail;
+  window.generateEventThumbnail = async function(gd) {
+    // Use the enhanced logo fetch that we defined earlier
+    // It already calls getBestTeamLogo, which uses ESPN high-res and TheSportsDB
+    return await originalGenThumb(gd);
+  };
+}
+
+// If getBestTeamLogo is not defined, provide it (should already be in custom JS)
+if (typeof getBestTeamLogo === 'undefined') {
+  window.getBestTeamLogo = async function(teamName, espnLogo) {
+    if (!teamName || teamName === '?' || teamName === 'Live Event') return null;
+    if (espnLogo) {
+      // Rewrite to high-res
+      const highRes = espnLogo.replace(/\/\d{2,4}\.(png|jpg)/, '/500.png').replace(/&w=\d+&h=\d+/, '&w=500&h=500');
+      return highRes;
+    }
+    // Try TheSportsDB
+    try {
+      const res = await fetch(`https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(teamName)}`);
+      const data = await res.json();
+      return data.teams?.[0]?.strTeamBadge || data.teams?.[0]?.strBadge || null;
+    } catch(e) {
+      return null;
+    }
+  };
+}
+
+// Also ensure that when you click "Post Preview", the thumbnail is included
+// The existing postToBlogger already adds gd.thumbUrl to the post, so no change needed.
+console.log('✅ Thumbnail copy button added to event cards');
 </script>
 
 </body>
