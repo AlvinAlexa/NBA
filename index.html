@@ -2801,6 +2801,73 @@ if (typeof getBestTeamLogo === 'undefined') {
 // Also ensure that when you click "Post Preview", the thumbnail is included
 // The existing postToBlogger already adds gd.thumbUrl to the post, so no change needed.
 console.log('✅ Thumbnail copy button added to event cards');
+  // ========== INSERT THUMBNAIL INTO POST BUTTON ==========
+
+// Function to insert thumbnail HTML into the post body
+function insertThumbnailIntoPostFromCard(idx) {
+  const gd = detectedGames?.[idx];
+  if (!gd || !gd.thumbUrl) {
+    toast('No thumbnail generated for this event yet.', 'err');
+    return;
+  }
+
+  const title = gd.espnEvent?.name || `${gd.home?.name || 'Event'} vs ${gd.away?.name || ''}`;
+  const imgHtml = `<div><img src="${gd.thumbUrl}" alt="${title}" style="max-width:100%;height:auto;border-radius:8px;margin-bottom:16px"></div>\n`;
+
+  const postBody = document.getElementById('post-body');
+  if (postBody) {
+    // Insert at top of post body
+    postBody.value = imgHtml + postBody.value;
+    toast('Thumbnail inserted at top of post', 'ok');
+    // If there's an SEO meter, update it
+    if (typeof updateSEOMeter === 'function') updateSEOMeter();
+  } else {
+    // Fallback: copy URL to clipboard
+    navigator.clipboard.writeText(gd.thumbUrl).then(() => {
+      toast('No post editor found. URL copied to clipboard.', 'ok');
+    }).catch(() => {
+      const textarea = document.createElement('textarea');
+      textarea.value = gd.thumbUrl;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      toast('No post editor found. URL copied to clipboard.', 'ok');
+    });
+  }
+}
+
+// Override renderGames to add the "Insert Thumb" button
+if (typeof renderGames === 'function') {
+  const originalRenderGames = renderGames;
+  window.renderGames = function() {
+    originalRenderGames();
+
+    // After cards are rendered, add the Insert Thumb button to each card's action bar
+    for (let i = 0; i < (detectedGames?.length || 0); i++) {
+      const actionsDiv = document.querySelector(`#card-${i} .content-actions`);
+      if (!actionsDiv) continue;
+
+      // Check if button already exists to avoid duplicates
+      if (actionsDiv.querySelector('.insert-thumb-btn')) continue;
+
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-secondary insert-thumb-btn';
+      btn.innerHTML = '<span class="btn-text">🖼️ Insert Thumb</span><div class="spin"></div>';
+      btn.onclick = () => insertThumbnailIntoPostFromCard(i);
+
+      // Insert before the "Post Preview" button (or at the end)
+      const postBtn = actionsDiv.querySelector('.btn-primary');
+      if (postBtn) {
+        actionsDiv.insertBefore(btn, postBtn);
+      } else {
+        actionsDiv.appendChild(btn);
+      }
+    }
+  };
+}
+
+console.log('✅ Insert Thumb button added to event cards');
 </script>
 
 </body>
