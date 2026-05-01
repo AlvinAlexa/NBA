@@ -1584,7 +1584,7 @@ toast(‘Thumbnail mode switched to Highlights with score: ’ + score, ‘s’)
 }
 currentComposeEv=ev;updateSEO();showPage(‘compose’);onTitleChange();
 toast(‘Existing post loaded — editing mode ✓’,‘s’);
-if(CFG.autoFetchStreams&&ev.type===‘match’)populateComposeStreams(ev);
+if(ev.type===‘match’)populateComposeStreams(ev);
 return;
 }
 toast(‘Could not load existing post body — starting fresh’,‘w’);
@@ -1603,7 +1603,7 @@ if(fin&&ev.type===‘match’){const modeEl=document.getElementById(‘c-mode’
 if(!fin&&ev.startTime){const offset=(CFG.schedTiming||60)*60000;const schedDt=new Date(ev.startTime.getTime()-offset);const local=new Date(schedDt.getTime()-schedDt.getTimezoneOffset()*60000).toISOString().slice(0,16);const dtEl=document.getElementById(‘post-schedule-dt’);if(dtEl)dtEl.value=local;document.getElementById(‘schedule-dt-wrap’).style.display=‘block’;}
 currentComposeEv=ev;updateSEO();showPage(‘compose’);onTitleChange();
 toast(CFG.deepseekKey?(fin?‘Highlights article written by Claude AI ✓’:‘Article written by Claude AI ✓’):‘Content generated ✓’,‘s’);
-if(CFG.autoFetchStreams&&ev.type===‘match’)populateComposeStreams(ev);
+if(ev.type===‘match’)populateComposeStreams(ev);
 }
 async function populateComposeStreams(ev){
 try{
@@ -2163,7 +2163,7 @@ if(aiMatchCache[cacheKey]!==undefined)return aiMatchCache[cacheKey];
 if(!CFG.deepseekKey){aiMatchCache[cacheKey]=null;return null;}
 const prompt=`You are a sports event matching assistant. Your job is to determine if two sports event listings refer to the SAME match. EVENT A: ${eventA} EVENT B: ${eventB} Rules: Match teams by ANY known alias, abbreviation, nickname, or translated name (PSG=巴黎圣日耳曼, Man Utd=曼联, Bayern=拜仁慕尼黑, Barca=巴塞罗那, Real=皇家马德里, Inter=国际米兰, Atletico=马德里竞技, Juve=尤文图斯, Dortmund=多特蒙德, Spurs=热刺, Celtics=凯尔特人, 76ers=76人, Lakers=湖人, Warriors=勇士, Knicks=尼克斯, Hawks=老鹰). Ignore word order. Return ONLY JSON: {"match":true/false,"confidence":0-100,"home":"canonical home","away":"canonical away","reason":"one sentence"}`;
 try{
-const res=await fetch(‘https://api.anthropic.com/v1/messages’,{method:‘POST’,headers:{‘Content-Type’:‘application/json’},body:JSON.stringify({model:‘claude-sonnet-4-20250514’,max_tokens:150,messages:[{role:‘user’,content:prompt}]})});
+const res=await fetch(‘https://api.anthropic.com/v1/messages’,{method:‘POST’,headers:{‘Content-Type’:‘application/json’,‘x-api-key’:CFG.deepseekKey,‘anthropic-version’:‘2023-06-01’,‘anthropic-dangerous-direct-browser-access’:‘true’},body:JSON.stringify({model:‘claude-sonnet-4-20250514’,max_tokens:150,messages:[{role:‘user’,content:prompt}]})});
 const data=await res.json();
 const text=(data.content?.[0]?.text||’’).trim();
 const parsed=JSON.parse(text.replace(/`json|`/g,’’).trim());
